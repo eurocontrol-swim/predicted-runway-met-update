@@ -80,7 +80,7 @@ SCHEDULER_JOB_DEFAULTS = {
 }
 
 MONGO = {
-  "db": "met-update",
+  "db": os.getenv("MET_UPDATE_DB_NAME", "met-update"),
   "host": "localhost",
   "port": 27017
 }

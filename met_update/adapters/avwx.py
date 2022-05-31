@@ -35,14 +35,17 @@ Details on EUROCONTROL: http://www.eurocontrol.int
 
 __author__ = "EUROCONTROL (SWIM)"
 
+import logging
 from functools import lru_cache
 
 from opnieuw import retry
 from requests import Session, HTTPError
 
-from met_update.config import AVWX_TOKEN
+from met_update import config as cfg
 
 BASE_URL = 'https://avwx.rest'
+
+_logger = logging.getLogger(__name__)
 
 
 def _get_metar_url(airport_icao: str) -> str:
@@ -63,10 +66,10 @@ def _get_session(avwx_token: str) -> Session:
 
 def get_session() -> Session:
 
-    if not AVWX_TOKEN:
+    if not cfg.AVWX_TOKEN:
         raise ValueError('AVWX_TOKEN not set')
 
-    return _get_session(AVWX_TOKEN)
+    return _get_session(cfg.AVWX_TOKEN)
 
 
 def _call_api(url: str) -> dict:
