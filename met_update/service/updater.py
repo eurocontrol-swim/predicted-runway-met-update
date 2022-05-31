@@ -36,26 +36,21 @@ Details on EUROCONTROL: http://www.eurocontrol.int
 __author__ = "EUROCONTROL (SWIM)"
 
 import logging
-from pathlib import Path
 
-from met_update.config import METAR_DIR, TAF_DIR, AIRPORT_ICAOS
+from met_update_db import repo
+
+from met_update.adapters import avwx
 
 _logger = logging.getLogger(__name__)
 
 
-def _check_dir(directory: Path) -> None:
-    if not directory.exists():
-        _logger.debug(f"{directory.as_posix()} directory does not exist. Creating one...")
-        directory.mkdir(parents=True)
+def update_taf(airport_icao: str):
+    taf_data = avwx.get_taf(airport_icao)
+
+    repo.add_taf(taf_data=taf_data, airport_icao=airport_icao)
 
 
-def ensure_dirs():
-    _check_dir(METAR_DIR)
-    _check_dir(TAF_DIR)
+def update_metar(airport_icao: str):
+    metar_data = avwx.get_metar(airport_icao)
 
-    for airport_icao in AIRPORT_ICAOS:
-        metar_airport_dir = METAR_DIR.joinpath(airport_icao.upper())
-        _check_dir(metar_airport_dir)
-
-        taf_airport_dir = TAF_DIR.joinpath(airport_icao.upper())
-        _check_dir(taf_airport_dir)
+    repo.add_metar(metar_data=metar_data, airport_icao=airport_icao)
