@@ -54,14 +54,16 @@ def configure_mongo():
     connect(**cfg.MONGO)
 
 
-def configure_scheduler(metar_updater: MetarUpdater, taf_updater: TafUpdater) -> BlockingScheduler:
+def configure_scheduler() -> BlockingScheduler:
     scheduler = BlockingScheduler(job_defaults=cfg.SCHEDULER_JOB_DEFAULTS, timezone='utc')
+    taf_updater = TafUpdater()
+    metar_updater = MetarUpdater()
 
     for airport_icao in cfg.AIRPORT_ICAOS:
-        scheduler.add_job(lambda: metar_updater.update(airport_icao),
+        scheduler.add_job(lambda: update_met(updater=metar_updater, airport_icao=airport_icao),
                           trigger='cron',
                           minute=f'*/1')
-        scheduler.add_job(lambda: taf_updater.update(airport_icao),
+        scheduler.add_job(lambda: update_met(updater=taf_updater, airport_icao=airport_icao),
                           trigger='cron',
                           minute=f'*/1')
 
@@ -83,7 +85,7 @@ def main():
         update_met(metar_updater, airport_icao)
         update_met(taf_updater, airport_icao)
 
-    scheduler = configure_scheduler(metar_updater, taf_updater)
+    scheduler = configure_scheduler()
     _logger.info(f"Starting scheduler...")
     _logger.info(f"Updating every */{cfg.UPDATE_RATE} minutes")
     scheduler.start()
