@@ -1,4 +1,4 @@
 /venvtest_app
 .idea
 *__pycache__
-_testing.py
+.coverage

@@ -41,18 +41,25 @@ from unittest import mock
 from met_update.service.updater import update_met
 
 
+class MockUpdater:
+    def get_avwx_data(self, airport_icao: str) -> dict:
+        ...
+
+    def store(self, avwx_data: dict, airport_icao: str) -> None:
+        ...
+
+
 def test_update_met__invalid_airport__logs_error_and_returns(caplog):
     caplog.set_level(logging.DEBUG)
 
-    mock_updater = mock.Mock()
-    mock_updater.get_avwx_data = mock.Mock()
-    mock_updater.store = mock.Mock()
+    MockUpdater.get_avwx_data = mock.Mock()
+    MockUpdater.store = mock.Mock()
 
     invalid_airport_icao = 'EBBR'
-    update_met(updater=mock_updater, airport_icao=invalid_airport_icao)
+    update_met(updater=MockUpdater(), airport_icao=invalid_airport_icao)
 
-    mock_updater.get_avwx_data.assert_not_called()
-    mock_updater.store.assert_not_called()
+    MockUpdater.get_avwx_data.assert_not_called()
+    MockUpdater.store.assert_not_called()
 
     expected_log_message = 'EBBR is not supported. Please choose one of EHAM, LEMD, LFPO, LOWW'
     assert caplog.messages[0] == expected_log_message
@@ -61,14 +68,13 @@ def test_update_met__invalid_airport__logs_error_and_returns(caplog):
 def test_update_met__avwx_raises_exception__data_is_not_stored(caplog):
     caplog.set_level(logging.DEBUG)
 
-    mock_updater = mock.Mock()
-    mock_updater.get_avwx_data = mock.Mock(side_effect=Exception('AVWX error'))
-    mock_updater.store = mock.Mock()
+    MockUpdater.get_avwx_data = mock.Mock(side_effect=Exception('AVWX error'))
+    MockUpdater.store = mock.Mock()
 
-    update_met(updater=mock_updater, airport_icao='EHAM')
+    update_met(updater=MockUpdater(), airport_icao='EHAM')
 
-    mock_updater.get_avwx_data.assert_called_once_with(airport_icao='EHAM')
-    mock_updater.store.assert_not_called()
+    MockUpdater.get_avwx_data.assert_called_once_with(airport_icao='EHAM')
+    MockUpdater.store.assert_not_called()
 
     expected_log_message = 'Error while trying to retrieve data from AVWX: AVWX error'
     assert caplog.messages[0] == expected_log_message
@@ -80,14 +86,13 @@ def test_update_met__no_errors__data_is_stored__and_logged(caplog):
     airport_icao = 'EHAM'
     avwx_data = {'data': {}}
 
-    mock_updater = mock.Mock()
-    mock_updater.get_avwx_data = mock.Mock(return_value=avwx_data)
-    mock_updater.store = mock.Mock()
+    MockUpdater.get_avwx_data = mock.Mock(return_value=avwx_data)
+    MockUpdater.store = mock.Mock()
 
-    update_met(updater=mock_updater, airport_icao='EHAM')
+    update_met(updater=MockUpdater(), airport_icao='EHAM')
 
-    mock_updater.get_avwx_data.assert_called_once_with(airport_icao=airport_icao)
-    mock_updater.store.assert_called_once_with(avwx_data=avwx_data, airport_icao=airport_icao)
+    MockUpdater.get_avwx_data.assert_called_once_with(airport_icao=airport_icao)
+    MockUpdater.store.assert_called_once_with(avwx_data=avwx_data, airport_icao=airport_icao)
 
     expected_log_message = "Stored AVWX data in DB for airport EHAM"
     assert caplog.messages[0] == expected_log_message
