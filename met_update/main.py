@@ -62,10 +62,10 @@ def configure_scheduler() -> BlockingScheduler:
     for airport_icao in cfg.AIRPORT_ICAOS:
         scheduler.add_job(lambda: update_met(updater=metar_updater, airport_icao=airport_icao),
                           trigger='cron',
-                          minute=f'*/1')
+                          minute=f'*/30')
         scheduler.add_job(lambda: update_met(updater=taf_updater, airport_icao=airport_icao),
                           trigger='cron',
-                          minute=f'*/1')
+                          minute=f'*/30')
 
     return scheduler
 
@@ -87,7 +87,7 @@ def main():
 
     scheduler = configure_scheduler()
     _logger.info(f"Starting scheduler...")
-    _logger.info(f"Updating every */{cfg.UPDATE_RATE} minutes")
+    _logger.info(f"Updating every */{cfg.MET_UPDATE_RATE_IN_SEC} minutes")
     scheduler.start()
 
 

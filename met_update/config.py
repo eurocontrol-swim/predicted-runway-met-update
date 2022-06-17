@@ -67,9 +67,9 @@ LOGGING = {
 }
 
 
-UPDATE_RATE = int(os.getenv('UPDATE_RATE', 30))
+MET_UPDATE_RATE_IN_SEC = int(os.getenv('MET_UPDATE_RATE_IN_SEC', 30))
 
-AIRPORT_ICAOS = os.getenv('ICAO_CODES', 'EHAM,LEMD,LFPO,LOWW').split(',')
+AIRPORT_ICAOS = os.getenv('DESTINATION_ICAOS', 'EHAM,LEMD,LFPO,LOWW').split(',')
 
 AVWX_TOKEN = os.getenv('AVWX_TOKEN')
 
@@ -81,6 +81,6 @@ SCHEDULER_JOB_DEFAULTS = {
 
 MONGO = {
   "db": os.getenv("MET_UPDATE_DB_NAME", "met-update"),
-  "host": "localhost",
+  "host": os.getenv("MET_UPDATE_DB_HOST", "localhost"),
   "port": 27017
 }
