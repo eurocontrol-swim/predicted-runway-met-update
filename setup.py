@@ -24,7 +24,7 @@ setuptools.setup(
         'mongoengine',
         'opnieuw',
         'APScheduler',
-        'git+https://git@github.com/eurocontrol-swim/predicted-runway-met-update-db.git'
+        'predicted-runway-met-update-db @ git+https://git@github.com/eurocontrol-swim/predicted-runway-met-update-db.git'
     ],
     license='see LICENSE'
 )
