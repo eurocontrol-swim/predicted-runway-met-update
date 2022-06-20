@@ -35,61 +35,52 @@ Details on EUROCONTROL: http://www.eurocontrol.int
 
 __author__ = "EUROCONTROL (SWIM)"
 
-import logging.config
+import os
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from mongoengine import connect
-
-from met_update import config as cfg
-from met_update.service.updater import TafUpdater, MetarUpdater, update_met
-
-_logger = logging.getLogger(__name__)
-
-
-def configure_logging():
-    logging.config.dictConfig(cfg.LOGGING)
-
-
-def configure_mongo():
-    connect(**cfg.MONGO)
-
-
-def configure_scheduler() -> BlockingScheduler:
-    scheduler = BlockingScheduler(job_defaults=cfg.SCHEDULER_JOB_DEFAULTS, timezone='utc')
-    taf_updater = TafUpdater()
-    metar_updater = MetarUpdater()
-
-    for airport_icao in cfg.AIRPORT_ICAOS:
-        scheduler.add_job(lambda: update_met(updater=metar_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
-        scheduler.add_job(lambda: update_met(updater=taf_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
-
-    return scheduler
+LOGGING = {
+    "version": 1,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "level": "DEBUG"
+        }
+    },
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "class": "logging.Formatter"
+        }
+    },
+    "disable_existing_loggers": False,
+    "root": {
+        "level": "DEBUG",
+        "handlers": [
+            "console"
+        ]
+    },
+    "loggers": {
+        "requests": {
+            "level": "INFO"
+        },
+    }
+}
 
 
-def _init_setup():
-    configure_logging()
-    configure_mongo()
+MET_UPDATE_RATE_IN_SEC = int(os.getenv('MET_UPDATE_RATE_IN_SEC', 30))
 
+AIRPORT_ICAOS = os.getenv('DESTINATION_ICAOS', 'EHAM,LEMD,LFPO,LOWW').split(',')
 
-def main():
-    _init_setup()
+AVWX_TOKEN = os.getenv('AVWX_TOKEN')
 
-    taf_updater, metar_updater = TafUpdater(), MetarUpdater()
+SCHEDULER_JOB_DEFAULTS = {
+    'coalesce': True,
+    'max_instances': 1,
+    'misfire_grace_time': 60 * 5
+}
 
-    _logger.info("Forcing an update...")
-    for airport_icao in cfg.AIRPORT_ICAOS:
-        update_met(metar_updater, airport_icao)
-        update_met(taf_updater, airport_icao)
-
-    scheduler = configure_scheduler()
-    _logger.info(f"Starting scheduler...")
-    _logger.info(f"Updating every */{cfg.MET_UPDATE_RATE_IN_SEC} minutes")
-    scheduler.start()
-
-
-if __name__ == '__main__':
-    main()
+MONGO = {
+  "db": os.getenv("MET_UPDATE_DB_NAME", "met-update"),
+  "host": os.getenv("MET_UPDATE_DB_HOST", "localhost"),
+  "port": 27017
+}

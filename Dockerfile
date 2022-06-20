@@ -1,19 +1,25 @@
-FROM python:3.9-buster
+FROM python:3.10-bullseye
 
 LABEL maintainer="francisco-javier.crabiffosse.ext@eurocontrol.int"
 
-ADD ./met_update /app/met_update
-ADD requirements.txt /app/requirements.txt
+RUN apt-get --allow-releaseinfo-change update --fix-missing -y; apt-get upgrade -y
 
-RUN mkdir "/data"
-RUN mkdir "/data/metar"
-RUN mkdir "/data/taf"
+RUN apt-get install supervisor -y
 
-VOLUME ["/data"]
+RUN mkdir -p /var/log/supervisor
+RUN mkdir -p /etc/supervisor/conf.d
+RUN mkdir -p /supervisor
 
 WORKDIR /app
+
+COPY requirements.txt /app/requirements.txt
+
 RUN pip install -r ./requirements.txt
+
+COPY ./met_update /app/met_update
+COPY ./supervisor/met_update.conf /etc/supervisor/conf.d/met_update.conf
+COPY ./supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 ENV PYTHONPATH /app
 
-ENTRYPOINT ["python", "./met_update/main.py"]
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]

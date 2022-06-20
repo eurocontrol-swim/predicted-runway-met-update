@@ -35,61 +35,66 @@ Details on EUROCONTROL: http://www.eurocontrol.int
 
 __author__ = "EUROCONTROL (SWIM)"
 
-import logging.config
+import logging
+from functools import lru_cache
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from mongoengine import connect
+from opnieuw import retry
+from requests import Session, HTTPError
 
 from met_update import config as cfg
-from met_update.service.updater import TafUpdater, MetarUpdater, update_met
+
+BASE_URL = 'https://avwx.rest'
 
 _logger = logging.getLogger(__name__)
 
 
-def configure_logging():
-    logging.config.dictConfig(cfg.LOGGING)
+def _get_metar_url(airport_icao: str) -> str:
+    return f"{BASE_URL}/api/metar/{airport_icao}"
 
 
-def configure_mongo():
-    connect(**cfg.MONGO)
+def _get_taf_url(airport_icao: str) -> str:
+    return f"{BASE_URL}/api/taf/{airport_icao}"
 
 
-def configure_scheduler() -> BlockingScheduler:
-    scheduler = BlockingScheduler(job_defaults=cfg.SCHEDULER_JOB_DEFAULTS, timezone='utc')
-    taf_updater = TafUpdater()
-    metar_updater = MetarUpdater()
+@lru_cache
+def _get_session(avwx_token: str) -> Session:
+    session = Session()
+    session.headers = {'Authorization': f'BEARER {avwx_token}'}
 
-    for airport_icao in cfg.AIRPORT_ICAOS:
-        scheduler.add_job(lambda: update_met(updater=metar_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
-        scheduler.add_job(lambda: update_met(updater=taf_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
-
-    return scheduler
+    return session
 
 
-def _init_setup():
-    configure_logging()
-    configure_mongo()
+def get_session() -> Session:
+
+    if not cfg.AVWX_TOKEN:
+        raise ValueError('AVWX_TOKEN not set')
+
+    return _get_session(cfg.AVWX_TOKEN)
 
 
-def main():
-    _init_setup()
+def _call_api(url: str) -> dict:
+    session = get_session()
 
-    taf_updater, metar_updater = TafUpdater(), MetarUpdater()
+    response = session.get(url)
 
-    _logger.info("Forcing an update...")
-    for airport_icao in cfg.AIRPORT_ICAOS:
-        update_met(metar_updater, airport_icao)
-        update_met(taf_updater, airport_icao)
+    response.raise_for_status()
 
-    scheduler = configure_scheduler()
-    _logger.info(f"Starting scheduler...")
-    _logger.info(f"Updating every */{cfg.MET_UPDATE_RATE_IN_SEC} minutes")
-    scheduler.start()
+    return response.json()
 
 
-if __name__ == '__main__':
-    main()
+@retry(
+    retry_on_exceptions=(ConnectionError, HTTPError),
+    max_calls_total=5,
+    retry_window_after_first_call_in_seconds=60,
+)
+def get_taf(airport_icao: str) -> dict:
+    return _call_api(url=_get_taf_url(airport_icao))
+
+
+@retry(
+    retry_on_exceptions=(ConnectionError, HTTPError),
+    max_calls_total=5,
+    retry_window_after_first_call_in_seconds=60,
+)
+def get_metar(airport_icao: str) -> dict:
+    return _call_api(url=_get_metar_url(airport_icao))
