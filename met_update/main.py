@@ -60,13 +60,15 @@ def configure_scheduler() -> BlockingScheduler:
     metar_updater = MetarUpdater()
 
     for airport_icao in cfg.AIRPORT_ICAOS:
-        scheduler.add_job(lambda: update_met(updater=metar_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
-        scheduler.add_job(lambda: update_met(updater=taf_updater, airport_icao=airport_icao),
-                          trigger='cron',
-                          minute=f'*/30')
 
+        scheduler.add_job(update_met,
+                          trigger='cron',
+                          minute=f'*/{cfg.MET_UPDATE_RATE_IN_SEC}',
+                          kwargs={'updater': metar_updater, 'airport_icao': airport_icao})
+        scheduler.add_job(update_met,
+                          trigger='cron',
+                          minute=f'*/{cfg.MET_UPDATE_RATE_IN_SEC}',
+                          kwargs={'updater': taf_updater, 'airport_icao': airport_icao})
     return scheduler
 
 
